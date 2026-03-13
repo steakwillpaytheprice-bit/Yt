@@ -2,10 +2,12 @@ import fetch from "node-fetch";
 
 export default async function handler(req, res) {
 
-  const channel = req.query.channel;
+  const { channel } = req.query;
 
   if (!channel) {
-    return res.status(400).json({ error: "channel required" });
+    return res.status(400).json({
+      error: "channel parameter required"
+    });
   }
 
   try {
@@ -16,25 +18,38 @@ export default async function handler(req, res) {
     const response = await fetch(url);
     const html = await response.text();
 
-    const jsonMatch = html.match(/ytInitialData\s*=\s*(\{.*?\});/);
+    const match = html.match(/ytInitialData\s*=\s*(\{.*?\});/);
 
-    if (!jsonMatch) {
-      return res.status(404).json({ error: "channel not found" });
+    if (!match) {
+      return res.status(404).json({
+        error: "Channel data not found"
+      });
     }
 
-    const data = JSON.parse(jsonMatch[1]);
+    const data = JSON.parse(match[1]);
 
-    const header =
-      data.header.c4TabbedHeaderRenderer;
+    const header = data.header.c4TabbedHeaderRenderer;
 
     const result = {
       channel_title: header.title,
       channel_id: header.channelId,
       handle: "@" + handle,
-      subscribers: header.subscriberCountText.simpleText,
+      subscribers: header.subscriberCountText?.simpleText || "Unknown",
       videos: header.videosCountText?.runs?.[0]?.text || "Unknown",
-      views: header.viewCountText?.simpleText || "Unknown",
-      published_at: header.joinedDateText?.runs?.[1]?.text || "Unknown"
+      views: header.viewCountText?.simpleText || "Unknown"
+    };
+
+    res.status(200).json(result);
+
+  } catch (error) {
+
+    res.status(500).json({
+      error: "Failed to fetch YouTube data",
+      message: error.message
+    });
+
+  }
+}      published_at: header.joinedDateText?.runs?.[1]?.text || "Unknown"
     };
 
     res.status(200).json(result);
