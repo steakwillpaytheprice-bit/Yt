@@ -1,5 +1,0 @@
-{
- "routes": [
-   { "src": "/yt-info/yt", "dest": "/api/yt-info/yt.js" }
- ]
-}
