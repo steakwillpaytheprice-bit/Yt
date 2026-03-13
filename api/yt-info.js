@@ -1,79 +1,66 @@
 export default async function handler(req, res) {
-
   const { channel } = req.query;
 
   if (!channel) {
-    return res.status(400).json({
-      error: "channel parameter required"
-    });
+    return res.status(400).json({ error: "channel parameter required" });
   }
 
   try {
-
     const handle = channel.replace("@", "");
-    const url = `https://www.youtube.com/@${handle}`;
 
-    const response = await fetch(url);
-    const html = await response.text();
+    // 1) Search YouTube to get the channel ID (JSON mode)
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
+      handle
+    )}&pbj=1`;
+    const searchRes = await fetch(searchUrl, {
+      headers: {
+        "x-youtube-client-name": "1",
+        "x-youtube-client-version": "2.20231110.00.00"
+      }
+    });
 
-    const match = html.match(/ytInitialData\s*=\s*(\{.*?\});/s);
+    const searchJson = await searchRes.json();
+    const channelRenderer =
+      searchJson[1]?.response?.contents?.twoColumnSearchResultsRenderer
+        ?.primaryContents?.sectionListRenderer?.contents?.[0]
+        ?.itemSectionRenderer?.contents?.[0]?.channelRenderer;
 
-    if (!match) {
-      return res.status(404).json({
-        error: "Channel data not found"
-      });
+    if (!channelRenderer) {
+      return res.status(404).json({ error: "Channel not found" });
     }
 
-    const data = JSON.parse(match[1]);
+    const channelId = channelRenderer.channelId;
 
-    const header = data?.header?.c4TabbedHeaderRenderer;
+    // 2) Fetch channel info JSON using pbj
+    const channelUrl = `https://www.youtube.com/channel/${channelId}?pbj=1`;
+    const channelRes = await fetch(channelUrl, {
+      headers: {
+        "x-youtube-client-name": "1",
+        "x-youtube-client-version": "2.20231110.00.00"
+      }
+    });
+    const channelJson = await channelRes.json();
 
-    if (!header) {
-      return res.status(500).json({
-        error: "YouTube page structure changed"
-      });
-    }
+    const metadata =
+      channelJson[1]?.response?.metadata?.channelMetadataRenderer;
+    const stats =
+      channelJson[1]?.response?.contents?.singleColumnBrowseResultsRenderer
+        ?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]
+        ?.itemSectionRenderer?.contents?.[0]?.channelAboutFullMetadataRenderer;
 
     const result = {
-      channel_title: header.title,
-      channel_id: header.channelId,
+      channel_title: metadata?.title || "Unknown",
+      channel_id: metadata?.externalId || channelId,
       handle: "@" + handle,
-      subscribers: header.subscriberCountText?.simpleText || "Unknown",
-      videos: header.videosCountText?.runs?.[0]?.text || "Unknown",
-      views: header.viewCountText?.simpleText || "Unknown"
+      subscribers: stats?.subscriberCountText?.simpleText || "Unknown",
+      views: stats?.viewCountText?.simpleText || "Unknown",
+      videos: stats?.videoCountText?.simpleText || "Unknown",
+      published_at: stats?.joinedDateText?.simpleText || "Unknown",
+      description: metadata?.description || "Unknown"
     };
 
     res.status(200).json(result);
-
   } catch (error) {
-
-    res.status(500).json({
-      error: "Server error",
-      message: error.message
-    });
-
-  }
-}      subscribers: header.subscriberCountText?.simpleText || "Unknown",
-      videos: header.videosCountText?.runs?.[0]?.text || "Unknown",
-      views: header.viewCountText?.simpleText || "Unknown"
-    };
-
-    res.status(200).json(result);
-
-  } catch (error) {
-
-    res.status(500).json({
-      error: "Failed to fetch YouTube data",
-      message: error.message
-    });
-
-  }
-}      published_at: header.joinedDateText?.runs?.[1]?.text || "Unknown"
-    };
-
-    res.status(200).json(result);
-
-  } catch (error) {
-    res.status(500).json({ error: "failed to fetch info" });
+    res.status(500).json({ error: "Server error", message: error.message });
   }
 }
