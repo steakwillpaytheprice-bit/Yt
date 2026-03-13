@@ -1,13 +1,12 @@
+### Response Example
+
+```json
 {
-  "name": "yt-info-server",
-  "version": "1.0.0",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "node-fetch": "^3.3.2"
-  }
+  "channel_title": "MrBeast",
+  "channel_id": "UCX6OQ3DkcsbYNE6H8uQQuVA",
+  "handle": "@MrBeast",
+  "subscribers": "140M",
+  "views": "20B",
+  "videos": "800",
+  "published_at": "2012-02-20T00:00:00Z"
 }
