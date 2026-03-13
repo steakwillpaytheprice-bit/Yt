@@ -1,3 +1,5 @@
+import fetch from "node-fetch";
+
 export default async function handler(req, res) {
   const { channel } = req.query;
 
@@ -5,67 +7,38 @@ export default async function handler(req, res) {
 
   try {
     const handle = channel.replace("@", "");
-    const url = `https://www.youtube.com/@${handle}?pbj=1`;
 
-    const response = await fetch(url, {
-      headers: {
-        "x-youtube-client-name": "1",
-        "x-youtube-client-version": "2.20231110.00.00",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-      }
-    });
+    // Step 1: Search channel by handle
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${handle}&key=${process.env.YT_API_KEY}`;
+    const searchRes = await fetch(searchUrl);
+    const searchJson = await searchRes.json();
 
-    if (!response.ok) return res.status(404).json({ error: "Channel not found" });
+    if (!searchJson.items || searchJson.items.length === 0) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
 
-    const json = await response.json();
+    const channelId = searchJson.items[0].snippet.channelId;
 
-    const header = json[1]?.response?.metadata?.channelMetadataRenderer;
-    const stats = json[1]?.response?.contents?.singleColumnBrowseResultsRenderer
-      ?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]
-      ?.itemSectionRenderer?.contents?.[0]?.channelAboutFullMetadataRenderer;
-
-    if (!header) return res.status(404).json({ error: "Channel not found" });
-
-    res.status(200).json({
-      channel_title: header?.title || "Unknown",
-      channel_id: header?.externalId || "Unknown",
-      handle: "@" + handle,
-      subscribers: stats?.subscriberCountText?.simpleText || "Unknown",
-      views: stats?.viewCountText?.simpleText || "Unknown",
-      videos: stats?.videoCountText?.simpleText || "Unknown",
-      published_at: stats?.joinedDateText?.simpleText || "Unknown",
-      description: header?.description || "Unknown"
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Server error", message: err.message });
-  }
-}      headers: {
-        "x-youtube-client-name": "1",
-        "x-youtube-client-version": "2.20231110.00.00"
-      }
-    });
+    // Step 2: Get channel details
+    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${process.env.YT_API_KEY}`;
+    const channelRes = await fetch(channelUrl);
     const channelJson = await channelRes.json();
 
-    const metadata =
-      channelJson[1]?.response?.metadata?.channelMetadataRenderer;
-    const stats =
-      channelJson[1]?.response?.contents?.singleColumnBrowseResultsRenderer
-        ?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]
-        ?.itemSectionRenderer?.contents?.[0]?.channelAboutFullMetadataRenderer;
+    const ch = channelJson.items[0];
 
-    const result = {
-      channel_title: metadata?.title || "Unknown",
-      channel_id: metadata?.externalId || channelId,
+    const response = {
+      channel_title: ch.snippet.title,
+      channel_id: ch.id,
       handle: "@" + handle,
-      subscribers: stats?.subscriberCountText?.simpleText || "Unknown",
-      views: stats?.viewCountText?.simpleText || "Unknown",
-      videos: stats?.videoCountText?.simpleText || "Unknown",
-      published_at: stats?.joinedDateText?.simpleText || "Unknown",
-      description: metadata?.description || "Unknown"
+      subscribers: ch.statistics.subscriberCount,
+      views: ch.statistics.viewCount,
+      videos: ch.statistics.videoCount,
+      published_at: ch.snippet.publishedAt
     };
 
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({ error: "Server error", message: error.message });
+    res.status(200).json(response);
+
+  } catch (err) {
+    res.status(500).json({ error: "Server error", message: err.message });
   }
 }
