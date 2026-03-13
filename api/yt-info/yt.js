@@ -1,14 +1,18 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
   const { channel } = req.query;
-  if (!channel) return res.status(400).json({ error: "channel parameter required" });
+
+  if (!channel) {
+    return res.status(400).json({ error: "channel parameter required" });
+  }
 
   try {
     const handle = channel.replace("@", "");
 
-    // 1) Search for the channel by name
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${handle}&key=${process.env.YT_API_KEY}`;
+    // 1️⃣ Search for the channel using YouTube Data API
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(
+      handle
+    )}&key=AIzaSyClAgCQ7xA9Kw3S-YxA4pPfTbBu2n9Hse4`;
+
     const searchRes = await fetch(searchUrl);
     const searchJson = await searchRes.json();
 
@@ -18,14 +22,14 @@ export default async function handler(req, res) {
 
     const channelId = searchJson.items[0].snippet.channelId;
 
-    // 2) Get detailed channel info
-    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${process.env.YT_API_KEY}`;
-    const channelRes = await fetch(channelUrl);
-    const channelJson = await channelRes.json();
+    // 2️⃣ Get channel details
+    const detailUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=AIzaSyClAgCQ7xA9Kw3S-YxA4pPfTbBu2n9Hse4`;
+    const detailRes = await fetch(detailUrl);
+    const detailJson = await detailRes.json();
 
-    const ch = channelJson.items[0];
+    const ch = detailJson.items[0];
 
-    const response = {
+    const result = {
       channel_title: ch.snippet.title,
       channel_id: ch.id,
       handle: "@" + handle,
@@ -35,6 +39,12 @@ export default async function handler(req, res) {
       published_at: ch.snippet.publishedAt
     };
 
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error", message: error.message });
+  }
+}
     res.status(200).json(response);
 
   } catch (err) {
