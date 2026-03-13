@@ -1,9 +1,16 @@
 {
-  "channel_title": "MrBeast",
-  "channel_id": "UCX6OQ3DkcsbYNE6H8uQQuVA",
-  "handle": "@MrBeast",
-  "subscribers": "140M",
-  "views": "20B",
-  "videos": "800",
-  "published_at": "2012-02-20T00:00:00Z"
+  "name": "yt-info-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "vercel-build": "next build"
+  },
+  "dependencies": {
+    "next": "14.3.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
 }
