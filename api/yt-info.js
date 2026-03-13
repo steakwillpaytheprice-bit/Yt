@@ -1,40 +1,45 @@
 export default async function handler(req, res) {
   const { channel } = req.query;
 
-  if (!channel) {
-    return res.status(400).json({ error: "channel parameter required" });
-  }
+  if (!channel) return res.status(400).json({ error: "channel parameter required" });
 
   try {
     const handle = channel.replace("@", "");
+    const url = `https://www.youtube.com/@${handle}?pbj=1`;
 
-    // 1) Search YouTube to get the channel ID (JSON mode)
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-      handle
-    )}&pbj=1`;
-    const searchRes = await fetch(searchUrl, {
+    const response = await fetch(url, {
       headers: {
         "x-youtube-client-name": "1",
-        "x-youtube-client-version": "2.20231110.00.00"
+        "x-youtube-client-version": "2.20231110.00.00",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
       }
     });
 
-    const searchJson = await searchRes.json();
-    const channelRenderer =
-      searchJson[1]?.response?.contents?.twoColumnSearchResultsRenderer
-        ?.primaryContents?.sectionListRenderer?.contents?.[0]
-        ?.itemSectionRenderer?.contents?.[0]?.channelRenderer;
+    if (!response.ok) return res.status(404).json({ error: "Channel not found" });
 
-    if (!channelRenderer) {
-      return res.status(404).json({ error: "Channel not found" });
-    }
+    const json = await response.json();
 
-    const channelId = channelRenderer.channelId;
+    const header = json[1]?.response?.metadata?.channelMetadataRenderer;
+    const stats = json[1]?.response?.contents?.singleColumnBrowseResultsRenderer
+      ?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]
+      ?.itemSectionRenderer?.contents?.[0]?.channelAboutFullMetadataRenderer;
 
-    // 2) Fetch channel info JSON using pbj
-    const channelUrl = `https://www.youtube.com/channel/${channelId}?pbj=1`;
-    const channelRes = await fetch(channelUrl, {
-      headers: {
+    if (!header) return res.status(404).json({ error: "Channel not found" });
+
+    res.status(200).json({
+      channel_title: header?.title || "Unknown",
+      channel_id: header?.externalId || "Unknown",
+      handle: "@" + handle,
+      subscribers: stats?.subscriberCountText?.simpleText || "Unknown",
+      views: stats?.viewCountText?.simpleText || "Unknown",
+      videos: stats?.videoCountText?.simpleText || "Unknown",
+      published_at: stats?.joinedDateText?.simpleText || "Unknown",
+      description: header?.description || "Unknown"
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+}      headers: {
         "x-youtube-client-name": "1",
         "x-youtube-client-version": "2.20231110.00.00"
       }
