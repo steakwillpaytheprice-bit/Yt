@@ -6,7 +6,7 @@ if(!channel){
 return res.status(400).json({error:"Channel required"});
 }
 
-const API_KEY = process.env.YT_API_KEY;
+const API_KEY = process.env.YT_API_KEY;AIzaSyBSAOgDv1yaSEACAgTGV4xeiMGeaecL70Y
 
 try {
 
