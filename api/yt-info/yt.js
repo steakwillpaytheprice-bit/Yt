@@ -1,6 +1,5 @@
 export default async function handler(req, res) {
   const { channel } = req.query;
-
   if (!channel) {
     return res.status(400).json({ error: "channel parameter required" });
   }
@@ -8,7 +7,7 @@ export default async function handler(req, res) {
   try {
     const handle = channel.replace("@", "");
 
-    // 1️⃣ Search for the channel using YouTube Data API
+    // Search for the channel using YouTube Data API
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(
       handle
     )}&key=AIzaSyClAgCQ7xA9Kw3S-YxA4pPfTbBu2n9Hse4`;
@@ -22,7 +21,7 @@ export default async function handler(req, res) {
 
     const channelId = searchJson.items[0].snippet.channelId;
 
-    // 2️⃣ Get channel details
+    // Get detailed channel stats
     const detailUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=AIzaSyClAgCQ7xA9Kw3S-YxA4pPfTbBu2n9Hse4`;
     const detailRes = await fetch(detailUrl);
     const detailJson = await detailRes.json();
@@ -35,6 +34,16 @@ export default async function handler(req, res) {
       handle: "@" + handle,
       subscribers: ch.statistics.subscriberCount,
       views: ch.statistics.viewCount,
+      videos: ch.statistics.videoCount,
+      published_at: ch.snippet.publishedAt
+    };
+
+    res.status(200).json(result);
+
+  } catch (error) {
+    res.status(500).json({ error: "Server error", message: error.message });
+  }
+}      views: ch.statistics.viewCount,
       videos: ch.statistics.videoCount,
       published_at: ch.snippet.publishedAt
     };
